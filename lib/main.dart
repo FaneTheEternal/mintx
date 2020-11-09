@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
+
+import 'backend.dart';
 
 void main() {
   runApp(MinTXApp());
@@ -17,60 +20,6 @@ class MinTXApp extends StatelessWidget {
       ),
       home: MenuWrapper(),
     );
-  }
-}
-
-class MinTXBackend extends ChangeNotifier {
-  LatLng _on;
-  LatLng _to;
-
-  bool _computing = false;
-
-  bool _computed = false;
-
-  set on(LatLng on) {
-    _on = on;
-    reset();
-    notifyListeners();
-  }
-
-  set to(LatLng to) {
-    _to = to;
-    reset();
-    notifyListeners();
-  }
-
-  LatLng get on => _on;
-  LatLng get to => _to;
-
-  void compute() {
-    _computing = true;
-    notifyListeners();
-  }
-
-  processing() async {
-    // TODO: Все запросы API
-    await new Future.delayed(Duration(seconds: 5));
-    _computed = true;
-    notifyListeners();
-  }
-
-  void reset() {
-    _computing = false;
-    _computed = false;
-    notifyListeners();
-  }
-
-  bool get computing => _computing;
-
-  bool get canCompute => _on != null && _to != null;
-
-  String get computeMsg {
-    if (canCompute) return 'Посчитать';
-    if (_on == null && _to == null) return 'Укажите откуда и куда';
-    if (_on == null) return 'Укажите откуда';
-    if (_to == null) return 'Укажите куда';
-    return 'come wrong';
   }
 }
 
@@ -92,6 +41,9 @@ class Menu extends StatefulWidget {
 }
 
 class _MenuState extends State<Menu> {
+  String onName;
+  String toName;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -108,7 +60,7 @@ class _MenuState extends State<Menu> {
                   },
                   child: Row(
                     children: [
-                      Expanded(child: Text(backend.on?.toString() ?? 'Выберите начало')),
+                      Expanded(child: Text(onName ?? 'Выберите начало')),
                       Icon(Icons.arrow_forward)
                     ],
                   )
@@ -119,7 +71,7 @@ class _MenuState extends State<Menu> {
                   },
                   child: Row(
                     children: [
-                      Expanded(child: Text(backend.to?.toString() ?? 'Выберите конец')),
+                      Expanded(child: Text(toName ?? 'Выберите конец')),
                       Icon(Icons.arrow_forward)
                     ],
                   )
@@ -132,6 +84,10 @@ class _MenuState extends State<Menu> {
     );
   }
 
+  _getVerbosePlaceName(LatLng place) async {
+    return await placemarkFromCoordinates(place.latitude, place.longitude);
+  }
+
   _choiceOn(BuildContext context, LatLng initPoint) async {
     final result = await Navigator.push(
       context,
@@ -142,6 +98,11 @@ class _MenuState extends State<Menu> {
 
     if (result != null) {
       Provider.of<MinTXBackend>(context).on = result;
+      final Placemark place = (await _getVerbosePlaceName(result))[0];
+      setState(() {
+        print(place.toString());
+        onName = '${place.name}, ${place.locality}, ${place.administrativeArea}';
+      });
     }
   }
 
@@ -155,6 +116,10 @@ class _MenuState extends State<Menu> {
 
     if (result != null) {
       Provider.of<MinTXBackend>(context).to = result;
+      final Placemark place = (await _getVerbosePlaceName(result))[0];
+      setState(() {
+        toName = '${place.name}, ${place.locality}, ${place.administrativeArea}';
+      });
     }
   }
 }
@@ -233,26 +198,26 @@ class _ComputeState extends State<Compute> {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-        child: Center(
-          child: Consumer<MinTXBackend>(
-            builder: (context, backend, child) {
-              return backend._computed ? Text('List of Tax')
-                  : backend.computing
-                    ? CircularProgressIndicator()
-                    : FlatButton(
-                        onPressed: backend.canCompute
+        child: Consumer<MinTXBackend>(
+          builder: (context, backend, child) {
+            return backend.computed ? backend.renderTaxes()
+                : Center(
+                    child: backend.computing
+                      ? CircularProgressIndicator()
+                      : FlatButton(
+                          onPressed: backend.canCompute
                             ? () async {
-                                setState(() {backend.compute();});
-                                await backend.processing();
-                                setState(() {
-                                  // update
-                                });
-                              }
+                              setState(() {backend.compute();});
+                              await backend.processing();
+                              setState(() {
+                              // update
+                              });
+                            }
                             : null,
-                        child: Text(backend.computeMsg)
-                      );
-            },
-          ),
+                          child: Text(backend.computeMsg)
+                        ),
+                  );
+          },
         )
     );
   }
