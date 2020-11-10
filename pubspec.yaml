@@ -1,7 +1,7 @@
 name: mintx
 description: A new Flutter application.
 
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: 'none'
 
 version: 1.0.0+1
 
@@ -15,6 +15,7 @@ dependencies:
   provider: ^3.0.0
   google_maps_flutter: ^1.0.6
   geocoding: ^1.0.5
+  url_launcher: ^5.7.10
 
   http: ^0.12.2
 

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
 class MinTXBackend extends ChangeNotifier {
   LatLng _on;
@@ -75,7 +76,20 @@ class MinTXBackend extends ChangeNotifier {
             ),
             IconButton(
               icon: Icon(Icons.check),
-              onPressed: () {},
+              onPressed: () async {
+                final url = 'https://3.redirect.appmetrica.yandex.com/route'
+                    '?start-lat=${on.latitude}'
+                    '&start-lon=${on.longitude}'
+                    '&end-lat=${to.latitude}'
+                    '&end-lon=${to.longitude}'
+                    '&ref=widget'
+                    '&appmetrica_tracking_id=1178268795219780156&utm_source=widget';
+                if (await canLaunch(url)) {
+                  await launch(url);
+                } else {
+                  throw 'Could not launch $url';
+                }
+              },
             )
           ],
         ),
